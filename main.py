@@ -20,22 +20,35 @@ def init_db():
 
 # Function to hash passwords
 def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    if salt is None:
+        salt = os.urandom(16)  # Generate a new salt if not provided
+    salted_password = salt + password.encode()  # Add salt to the password
+    hashed_password = hashlib.sha256(salted_password).hexdigest()  # Hash the salted password
+    return hashed_password, salt
 
 # Function for logging in users
 def login(db, username, password):
     users_collection = db["users"]
     hashed_password = hash_password(password)
     user = users_collection.find_one({"username": username, "password": hashed_password})
-    return user
+    if user:
+        salt = user["salt"]  # Get the stored salt from the database
+        hashed_password, _ = hash_password(password, salt)  # Hash the provided password with the stored salt
+        if hashed_password == user["password"]:
+            return user
+    return None
 
 # Function for registering new users
 def register(db, username, password):
     users_collection = db["users"]
-    hashed_password = hash_password(password)
+    if users_collection.find_one({"username": username}):
+        messagebox.showwarning("Registration", "Username already exists!")
+        return
+    hashed_password, salt = hash_password(password)  # Hash password with a new salt
     try:
-        # Insert new user document
-        users_collection.insert_one({"username": username, "password": hashed_password})
+        # Insert new user document with salt and hashed password
+        users_collection.insert_one({"username": username, "password": hashed_password, "salt": salt})
+        messagebox.showinfo("Registration", "Registration successful!")
     except Exception as e:
         messagebox.showwarning("Registration", f"Error: {e}")
 
