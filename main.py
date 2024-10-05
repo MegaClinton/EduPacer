@@ -17,7 +17,6 @@ def init_db():
         messagebox.showerror("Error", f"Failed to connect to MongoDB: {e}")
         return None
 
-
 # Function to hash passwords
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -88,24 +87,33 @@ def show_menu(username):
     
     def pick_subject(subject):
         menu_window.destroy()
-        show_video(subject)
+        show_video_choice(subject)
 
     for subject in subjects:
         tk.Button(menu_window, text=subject, command=lambda s=subject: pick_subject(s)).pack()
 
-# Function to display the video
-def show_video(subject):
-    video_url = {
-        "Math": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",  # Example links
-        "Science": "https://www.youtube.com/watch?v=abcd1234",  
-        "Programming": "https://www.youtube.com/watch?v=xyz5678"
-    }[subject]
+# Function to show video choice
+def show_video_choice(subject):
+    choice_window = tk.Toplevel(root)
+    choice_window.title(f"{subject} Video Choice")
+
+    video_details = {
+        "Math": ("Math Basics - Adding and Subtracting", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+        "Science": ("Science 101 - Basic Chemistry", "https://www.youtube.com/watch?v=abcd1234"),
+        "Programming": ("Intro to Programming - Python Basics", "https://www.youtube.com/watch?v=xyz5678")
+    }
+
+    video_title, video_url = video_details[subject]
+
+    tk.Label(choice_window, text=f"Video Title: {video_title}").pack()
     
-    # Open the video in the default web browser
-    webbrowser.open(video_url)
-    
-    # After the video, prompt multiple-choice questions
-    ask_questions(subject)
+    def watch_video():
+        webbrowser.open(video_url)
+        choice_window.destroy()
+        ask_questions(subject)
+
+    tk.Button(choice_window, text="Watch Video", command=watch_video).pack()
+    tk.Button(choice_window, text="Answer Questions", command=lambda: (choice_window.destroy(), ask_questions(subject))).pack()
 
 # Function to ask questions
 def ask_questions(subject):
@@ -140,7 +148,7 @@ def ask_questions(subject):
             rb.pack(anchor='w')
 
         # Button to submit the answer for this question
-        tk.Button(question_window, text="Submit Answer", command=lambda: submit_answer(q["answer"], selected_answer.get())).pack()
+        tk.Button(question_window, text="Submit Answer", command=lambda correct_answer=q["answer"]: submit_answer(correct_answer, selected_answer.get())).pack()
 
     def submit_answer(correct_answer, user_answer):
         user_answers.append(user_answer)
@@ -162,3 +170,4 @@ if db is not None:
 
 # Run the app
 root.mainloop()
+
