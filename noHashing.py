@@ -1,50 +1,38 @@
 import tkinter as tk
 from tkinter import messagebox
-import sqlite3
-import hashlib
 import webbrowser
+from pymongo import MongoClient
 
-# Function to hash passwords
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
-
-# Database to store user login and progress
+# Function to initialize the MongoDB database
 def init_db():
-    conn = sqlite3.connect('user_data.db')
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
+    try:
+        # Replace with your actual MongoDB password
+        uri = "mongodb+srv://clinton3122003:hacksmu123@learningapp.31wtb.mongodb.net/?retryWrites=true&w=majority&appName=LearningApp"
+        client = MongoClient(uri)
+        db = client["LearningApp"]  # Replace with your actual database name
+        print("Connected to MongoDB Atlas!")
+        return db
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to connect to MongoDB: {e}")
+        return None
 
-# Function for logging in users
-def login(username, password):
-    conn = sqlite3.connect('user_data.db')
-    c = conn.cursor()
-    c.execute('SELECT * FROM users WHERE username=? AND password=?', (username, hash_password(password)))
-    user = c.fetchone()
-    conn.close()
+# Function for logging in users (no hashing)
+def login(db, username, password):
+    users_collection = db["users"]
+    user = users_collection.find_one({"username": username, "password": password})
     return user
 
-# Function for registering new users
-def register(username, password):
-    conn = sqlite3.connect('user_data.db')
-    c = conn.cursor()
+# Function for registering new users (no hashing)
+def register(db, username, password):
+    users_collection = db["users"]
     try:
-        c.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, hash_password(password)))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        messagebox.showwarning("Registration", "Username already exists.")
-    finally:
-        conn.close()
+        # Insert new user document without hashing
+        users_collection.insert_one({"username": username, "password": password})
+    except Exception as e:
+        messagebox.showwarning("Registration", f"Error: {e}")
 
 # Prompt for user login or registration
-def user_login():
+def user_login(db):
     login_window = tk.Toplevel(root)
     login_window.title("Login")
 
@@ -59,7 +47,7 @@ def user_login():
     def try_login():
         username = username_entry.get()
         password = password_entry.get()
-        user = login(username, password)
+        user = login(db, username, password)
         if user:
             messagebox.showinfo("Login", "Login successful!")
             login_window.destroy()
@@ -71,7 +59,7 @@ def user_login():
         username = username_entry.get()
         password = password_entry.get()
         if username and password:
-            register(username, password)
+            register(db, username, password)
             messagebox.showinfo("Register", "Registration successful!")
             login_window.destroy()
             show_menu(username)
@@ -92,24 +80,33 @@ def show_menu(username):
     
     def pick_subject(subject):
         menu_window.destroy()
-        show_video(subject)
+        show_video_choice(subject)
 
     for subject in subjects:
         tk.Button(menu_window, text=subject, command=lambda s=subject: pick_subject(s)).pack()
 
-# Function to display the video
-def show_video(subject):
-    video_url = {
-        "Math": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",  # Example links
-        "Science": "https://www.youtube.com/watch?v=abcd1234",  
-        "Programming": "https://www.youtube.com/watch?v=xyz5678"
-    }[subject]
+# Function to show video choice
+def show_video_choice(subject):
+    choice_window = tk.Toplevel(root)
+    choice_window.title(f"{subject} Video Choice")
+
+    video_details = {
+        "Math": ("Math Basics - Adding and Subtracting", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+        "Science": ("Science 101 - Basic Chemistry", "https://www.youtube.com/watch?v=abcd1234"),
+        "Programming": ("Intro to Programming - Python Basics", "https://www.youtube.com/watch?v=xyz5678")
+    }
+
+    video_title, video_url = video_details[subject]
+
+    tk.Label(choice_window, text=f"Video Title: {video_title}").pack()
     
-    # Open the video in the default web browser
-    webbrowser.open(video_url)
-    
-    # After the video, prompt multiple-choice questions
-    ask_questions(subject)
+    def watch_video():
+        webbrowser.open(video_url)
+        choice_window.destroy()
+        ask_questions(subject)
+
+    tk.Button(choice_window, text="Watch Video", command=watch_video).pack()
+    tk.Button(choice_window, text="Answer Questions", command=lambda: (choice_window.destroy(), ask_questions(subject))).pack()
 
 # Function to ask questions
 def ask_questions(subject):
@@ -144,7 +141,7 @@ def ask_questions(subject):
             rb.pack(anchor='w')
 
         # Button to submit the answer for this question
-        tk.Button(question_window, text="Submit Answer", command=lambda: submit_answer(q["answer"], selected_answer.get())).pack()
+        tk.Button(question_window, text="Submit Answer", command=lambda correct_answer=q["answer"]: submit_answer(correct_answer, selected_answer.get())).pack()
 
     def submit_answer(correct_answer, user_answer):
         user_answers.append(user_answer)
@@ -158,10 +155,11 @@ root.title("Learning Tool")
 root.geometry("300x200")
 
 # Initialize the database
-init_db()
+db = init_db()
 
 # Start the login process
-user_login()
+if db is not None:
+    user_login(db)
 
 # Run the app
 root.mainloop()
