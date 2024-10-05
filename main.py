@@ -1,79 +1,164 @@
+import tkinter as tk
+from tkinter import messagebox
+import hashlib
+import webbrowser
 from pymongo import MongoClient
 
-# Replace <password> with your MongoDB password
-uri = "mongodb+srv://clinton3122003:<hacksmu123>@learningapp.31wtb.mongodb.net/?retryWrites=true&w=majority&appName=LearningApp"
-client = MongoClient(uri)
+# Function to initialize the MongoDB database
+def init_db():
+    try:
+        # Replace with your actual MongoDB password
+        uri = "mongodb+srv://clinton3122003:hacksmu123@learningapp.31wtb.mongodb.net/?retryWrites=true&w=majority&appName=LearningApp"
+        client = MongoClient(uri)
+        db = client["LearningApp"]  # Replace with your actual database name
+        print("Connected to MongoDB Atlas!")
+        return db
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to connect to MongoDB: {e}")
+        return None
 
-# Access the database
-db = client["<LearningApp>"]
-print("Connected to MongoDB Atlas!")
 
-# 1. Register User
-def register_user(name, email, password):
+# Function to hash passwords
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
-    user = {
-        "id": len(users) + 1,  # Simple ID generation
-        "name": name,
-        "email": email,
-        "password": password,  # In production, hash the password
-        "progress": {},  # Stores the score for quizzes
-        "points": 0  # Points earned from completed quizzes
-    }
-    users.append(user)
+# Function for logging in users
+def login(db, username, password):
+    users_collection = db["users"]
+    hashed_password = hash_password(password)
+    user = users_collection.find_one({"username": username, "password": hashed_password})
     return user
 
-# 2. Login User
-def login_user(email, password):
-    for user in users:
-        if user['email'] == email and user['password'] == password:
-            return user
-    return None
+# Function for registering new users
+def register(db, username, password):
+    users_collection = db["users"]
+    hashed_password = hash_password(password)
+    try:
+        # Insert new user document
+        users_collection.insert_one({"username": username, "password": hashed_password})
+    except Exception as e:
+        messagebox.showwarning("Registration", f"Error: {e}")
 
-# 3. Add Video (Admin Logic)
-def add_video(title, description, url):
-    video = {
-        "id": len(videos) + 1,
-        "title": title,
-        "description": description,
-        "url": url
-    }
-    videos.append(video)
-    return video
+# Prompt for user login or registration
+def user_login(db):
+    login_window = tk.Toplevel(root)
+    login_window.title("Login")
 
-# 4. Add Quiz for a Video (Admin Logic)
-def add_quiz(video_id, questions, correct_answers):
-    quiz = {
-        "video_id": video_id,
-        "questions": questions,
-        "correct_answers": correct_answers  # Correct answers for scoring
-    }
-    quizzes[video_id] = quiz
-    return quiz
+    tk.Label(login_window, text="Username").grid(row=0)
+    tk.Label(login_window, text="Password").grid(row=1)
 
-# 5. Get Quiz for a Video
-def get_quiz(video_id):
-    return quizzes.get(video_id, None)
+    username_entry = tk.Entry(login_window)
+    password_entry = tk.Entry(login_window, show="*")
+    username_entry.grid(row=0, column=1)
+    password_entry.grid(row=1, column=1)
 
-# 6. Submit Quiz and Calculate Score
-def submit_quiz(user_id, video_id, user_answers):
-    quiz = quizzes.get(video_id)
-    if not quiz:
-        return "Quiz not found"
+    def try_login():
+        username = username_entry.get()
+        password = password_entry.get()
+        user = login(db, username, password)
+        if user:
+            messagebox.showinfo("Login", "Login successful!")
+            login_window.destroy()
+            show_menu(username)
+        else:
+            messagebox.showwarning("Login", "Incorrect username or password")
+
+    def try_register():
+        username = username_entry.get()
+        password = password_entry.get()
+        if username and password:
+            register(db, username, password)
+            messagebox.showinfo("Register", "Registration successful!")
+            login_window.destroy()
+            show_menu(username)
+        else:
+            messagebox.showwarning("Register", "Please enter a username and password")
+
+    tk.Button(login_window, text="Login", command=try_login).grid(row=2, column=0)
+    tk.Button(login_window, text="Register", command=try_register).grid(row=2, column=1)
+
+# Function to display the menu
+def show_menu(username):
+    menu_window = tk.Toplevel(root)
+    menu_window.title("Pick a Subject")
     
-    # Calculate score
-    correct_answers = quiz['correct_answers']
-    score = sum([1 for i in range(len(correct_answers)) if user_answers[i] == correct_answers[i]])
+    subjects = ["Math", "Science", "Programming"]
+    
+    tk.Label(menu_window, text=f"Welcome, {username}! Pick a subject:").pack()
+    
+    def pick_subject(subject):
+        menu_window.destroy()
+        show_video(subject)
 
-    # Update user progress
-    user = next((u for u in users if u['id'] == user_id), None)
-    if user:
-        user['progress'][video_id] = score
-        user['points'] += score  # Increase user's points
-        return f"Quiz submitted successfully. Score: {score}"
-    return "User not found"
+    for subject in subjects:
+        tk.Button(menu_window, text=subject, command=lambda s=subject: pick_subject(s)).pack()
 
-# 7. Issue Certificate (Dummy Logic for now)
-def issue_certificate(user_id, course_id):
-    # Placeholder for certificate issuing logic
-    return f"Certificate issued for user {user_id} on course {course_id}"
+# Function to display the video
+def show_video(subject):
+    video_url = {
+        "Math": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",  # Example links
+        "Science": "https://www.youtube.com/watch?v=abcd1234",  
+        "Programming": "https://www.youtube.com/watch?v=xyz5678"
+    }[subject]
+    
+    # Open the video in the default web browser
+    webbrowser.open(video_url)
+    
+    # After the video, prompt multiple-choice questions
+    ask_questions(subject)
 
+# Function to ask questions
+def ask_questions(subject):
+    question_window = tk.Toplevel(root)
+    question_window.title(f"{subject} Questions")
+
+    tk.Label(question_window, text="Answer the following questions:").pack()
+
+    questions = {
+        "Math": [
+            {"question": "What is 2+2?", "options": ["3", "4", "5"], "answer": "4"},
+            {"question": "What is the square root of 16?", "options": ["2", "3", "4"], "answer": "4"}
+        ],
+        "Science": [
+            {"question": "What is the chemical symbol for water?", "options": ["H2O", "CO2", "O2"], "answer": "H2O"},
+            {"question": "What planet is closest to the Sun?", "options": ["Earth", "Mars", "Mercury"], "answer": "Mercury"}
+        ],
+        "Programming": [
+            {"question": "What is a variable?", "options": ["A storage location", "A function", "A loop"], "answer": "A storage location"},
+            {"question": "What does HTML stand for?", "options": ["HyperText Markup Language", "HighText Machine Language", "HyperText Machine Language"], "answer": "HyperText Markup Language"}
+        ]
+    }
+
+    user_answers = []
+    
+    for q in questions[subject]:
+        tk.Label(question_window, text=q["question"]).pack()
+        selected_answer = tk.StringVar()
+
+        for option in q["options"]:
+            rb = tk.Radiobutton(question_window, text=option, variable=selected_answer, value=option)
+            rb.pack(anchor='w')
+
+        # Button to submit the answer for this question
+        tk.Button(question_window, text="Submit Answer", command=lambda: submit_answer(q["answer"], selected_answer.get())).pack()
+
+    def submit_answer(correct_answer, user_answer):
+        user_answers.append(user_answer)
+        tk.Label(question_window, text=f"You answered: {user_answer}. Correct answer was: {correct_answer}").pack()
+
+    tk.Button(question_window, text="Finish", command=question_window.destroy).pack()
+
+# Root window for the app
+root = tk.Tk()
+root.title("Learning Tool")
+root.geometry("300x200")
+
+# Initialize the database
+db = init_db()
+
+# Start the login process
+if db is not None:
+    user_login(db)
+
+# Run the app
+root.mainloop()
