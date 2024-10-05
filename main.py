@@ -1,10 +1,16 @@
-# Sample Data Structures (In-memory for now)
-users = []
-videos = []
-quizzes = {}
+from pymongo import MongoClient
+
+# Replace <password> with your MongoDB password
+uri = "mongodb+srv://clinton3122003:<hacksmu123>@learningapp.31wtb.mongodb.net/?retryWrites=true&w=majority&appName=LearningApp"
+client = MongoClient(uri)
+
+# Access the database
+db = client["<LearningApp>"]
+print("Connected to MongoDB Atlas!")
 
 # 1. Register User
 def register_user(name, email, password):
+
     user = {
         "id": len(users) + 1,  # Simple ID generation
         "name": name,

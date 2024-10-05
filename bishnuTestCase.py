@@ -157,7 +157,7 @@ root.geometry("300x200")
 db = init_db()
 
 # Start the login process
-if db:
+if db is not None:
     user_login(db)
 
 # Run the app
