@@ -3,15 +3,19 @@ from tkinter import messagebox
 import hashlib
 import webbrowser
 from pymongo import MongoClient
+from pymongo.errors import DuplicateKeyError
 
 # Function to initialize the MongoDB database
 def init_db():
     try:
-        # Replace with your actual MongoDB password
         uri = "mongodb+srv://clinton3122003:hacksmu123@learningapp.31wtb.mongodb.net/?retryWrites=true&w=majority&appName=LearningApp"
         client = MongoClient(uri)
-        db = client["LearningApp"]  # Replace with your actual database name
+        db = client["LearningApp"]
         print("Connected to MongoDB Atlas!")
+        
+        # Create a unique index on the username field
+        db.users.create_index([("username", 1)], unique=True)
+        
         return db
     except Exception as e:
         messagebox.showerror("Error", f"Failed to connect to MongoDB: {e}")
@@ -32,9 +36,13 @@ def login(db, username, password):
 def register(db, username, password):
     users_collection = db["users"]
     hashed_password = hash_password(password)
+    
     try:
         # Insert new user document
         users_collection.insert_one({"username": username, "password": hashed_password})
+        messagebox.showinfo("Registration", "Registration successful!")
+    except DuplicateKeyError:
+        messagebox.showwarning("Registration", "Username already exists! Please choose a different username.")
     except Exception as e:
         messagebox.showwarning("Registration", f"Error: {e}")
 
@@ -67,9 +75,11 @@ def user_login(db):
         password = password_entry.get()
         if username and password:
             register(db, username, password)
-            messagebox.showinfo("Register", "Registration successful!")
-            login_window.destroy()
-            show_menu(username)
+            # Automatically log in after successful registration
+            user = login(db, username, password)
+            if user:  # If the user exists after registration, proceed to menu
+                login_window.destroy()
+                show_menu(username)
         else:
             messagebox.showwarning("Register", "Please enter a username and password")
 
@@ -170,4 +180,3 @@ if db is not None:
 
 # Run the app
 root.mainloop()
-
