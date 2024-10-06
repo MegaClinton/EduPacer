@@ -19,6 +19,8 @@ def create_app():
     
     # Initialize MongoDB
     app.db = init_db()
+    app.config['SECRET_KEY'] = '4f931d030d562a0f6e1352225298cd59' #actually not recommended to hardcode key
+    #recommended to use os.getenv('SECRET_KEY') (which is saving key in env instead of hardcoding)
     
     # Register blueprints
     from .api.auth import auth_bp  # Update to include the 'api' subdirectory

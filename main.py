@@ -19,37 +19,46 @@ def init_db():
 
 # Function to hash passwords
 def hash_password(password):
-    if salt is None:
-        salt = os.urandom(16)  # Generate a new salt if not provided
-    salted_password = salt + password.encode()  # Add salt to the password
-    hashed_password = hashlib.sha256(salted_password).hexdigest()  # Hash the salted password
-    return hashed_password, salt
+    return hashlib.sha256(password.encode()).hexdigest()
 
 # Function for logging in users
 def login(db, username, password):
     users_collection = db["users"]
     hashed_password = hash_password(password)
     user = users_collection.find_one({"username": username, "password": hashed_password})
-    if user:
-        salt = user["salt"]  # Get the stored salt from the database
-        hashed_password, _ = hash_password(password, salt)  # Hash the provided password with the stored salt
-        if hashed_password == user["password"]:
-            return user
-    return None
+    return user
 
 # Function for registering new users
 def register(db, username, password):
     users_collection = db["users"]
-    if users_collection.find_one({"username": username}):
-        messagebox.showwarning("Registration", "Username already exists!")
+    hashed_password = hash_password(password)
+    
+    # Check if the username already exists
+    existing_user = users_collection.find_one({"username": username})
+    
+    if existing_user:
+        messagebox.showwarning("Registration", "Username already exists. Please choose a different username.")
         return
-    hashed_password, salt = hash_password(password)  # Hash password with a new salt
+
     try:
-        # Insert new user document with salt and hashed password
-        users_collection.insert_one({"username": username, "password": hashed_password, "salt": salt})
+        # Insert new user document with points initialized to 0
+        users_collection.insert_one({
+            "username": username,
+            "password": hashed_password,
+            "points": 0  # Initialize points to 0
+        })
         messagebox.showinfo("Registration", "Registration successful!")
     except Exception as e:
         messagebox.showwarning("Registration", f"Error: {e}")
+
+def add_points_to_users(db):
+    users_collection = db["users"]
+    # Update all users to add a new points field if it doesn't exist
+    result = users_collection.update_many(
+        {"points": {"$exists": False}},  # Only update users who don't have the points field
+        {"$set": {"points": 0}}  # Set points to 0
+    )
+    print(f"Modified {result.modified_count} documents.")
 
 # Prompt for user login or registration
 def user_login(db):
@@ -73,16 +82,19 @@ def user_login(db):
             login_window.destroy()
             show_menu(username)
         else:
-            messagebox.showwarning("Login", "Incorrect username or password")
+            if db["users"].find_one({"username": username}):
+                messagebox.showwarning("Login", "Incorrect username or password")
+            else:  
+                messagebox.showwarning("Login", "You must be registered to login.")
 
     def try_register():
         username = username_entry.get()
         password = password_entry.get()
         if username and password:
             register(db, username, password)
-            messagebox.showinfo("Register", "Registration successful!")
+            # Call login again to allow the user to log in after registration
             login_window.destroy()
-            show_menu(username)
+            user_login(db)
         else:
             messagebox.showwarning("Register", "Please enter a username and password")
 
@@ -100,13 +112,13 @@ def show_menu(username):
     
     def pick_subject(subject):
         menu_window.destroy()
-        show_video_choice(subject)
+        show_video_choice(subject, username)  # Pass username to the next function
 
     for subject in subjects:
         tk.Button(menu_window, text=subject, command=lambda s=subject: pick_subject(s)).pack()
 
 # Function to show video choice
-def show_video_choice(subject):
+def show_video_choice(subject, username):
     choice_window = tk.Toplevel(root)
     choice_window.title(f"{subject} Video Choice")
 
@@ -123,13 +135,13 @@ def show_video_choice(subject):
     def watch_video():
         webbrowser.open(video_url)
         choice_window.destroy()
-        ask_questions(subject)
+        ask_questions(subject, username)  # Pass username to the questions function
 
     tk.Button(choice_window, text="Watch Video", command=watch_video).pack()
-    tk.Button(choice_window, text="Answer Questions", command=lambda: (choice_window.destroy(), ask_questions(subject))).pack()
+    tk.Button(choice_window, text="Answer Questions", command=lambda: (choice_window.destroy(), ask_questions(subject, username))).pack()
 
 # Function to ask questions
-def ask_questions(subject):
+def ask_questions(subject, username):
     question_window = tk.Toplevel(root)
     question_window.title(f"{subject} Questions")
 
@@ -150,37 +162,52 @@ def ask_questions(subject):
         ]
     }
 
-    user_answers = []
+    correct_answers = 0  # Track correct answers
     
+    def submit_answer(correct_answer, user_answer):
+        nonlocal correct_answers  # Use nonlocal to modify outer scope variable
+        if user_answer == correct_answer:
+            correct_answers += 1
+        tk.Label(question_window, text=f"You answered: {user_answer}. Correct answer was: {correct_answer}").pack()
+
+    def finish_quiz(username):
+        points_earned = assign_points(correct_answers)
+        # Update points in the database
+        users_collection = db["users"]
+        users_collection.update_one({"username": username}, {"$inc": {"points": points_earned}})
+        messagebox.showinfo("Quiz Complete", f"You earned {points_earned} points.")
+        question_window.destroy()
+
     for q in questions[subject]:
         tk.Label(question_window, text=q["question"]).pack()
-        selected_answer = tk.StringVar()
+        selected_answer = tk.StringVar(value=0)  # Initialize to None for each question
 
+        # Create radiobuttons for the current question
         for option in q["options"]:
             rb = tk.Radiobutton(question_window, text=option, variable=selected_answer, value=option)
             rb.pack(anchor='w')
 
-        # Button to submit the answer for this question
-        tk.Button(question_window, text="Submit Answer", command=lambda correct_answer=q["answer"]: submit_answer(correct_answer, selected_answer.get())).pack()
+        tk.Button(question_window, text="Submit Answer", 
+                  command=lambda correct_answer=q["answer"], var=selected_answer: submit_answer(correct_answer, var.get())).pack()
 
-    def submit_answer(correct_answer, user_answer):
-        user_answers.append(user_answer)
-        tk.Label(question_window, text=f"You answered: {user_answer}. Correct answer was: {correct_answer}").pack()
+    tk.Button(question_window, text="Finish Quiz", command=lambda: finish_quiz(username)).pack()
 
-    tk.Button(question_window, text="Finish", command=question_window.destroy).pack()
-
-# Root window for the app
-root = tk.Tk()
-root.title("Learning Tool")
-root.geometry("300x200")
+# Function to assign points based on correct answers
+def assign_points(correct_answers):
+    points_per_answer = 10
+    return correct_answers * points_per_answer
 
 # Initialize the database
 db = init_db()
 
-# Start the login process
+# Create the root window but do not call mainloop yet
+root = tk.Tk()
+root.withdraw()  # Hide the root window initially
+
+# Start the login process only if the database connection was successful
 if db is not None:
+    add_points_to_users(db)  # This will add a points field to all users without it
     user_login(db)
 
 # Run the app
 root.mainloop()
-
