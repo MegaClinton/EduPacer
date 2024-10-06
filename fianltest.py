@@ -82,7 +82,10 @@ def user_login(db):
             login_window.destroy()
             show_menu(username)
         else:
-            messagebox.showwarning("Login", "Incorrect username or password")
+            if db["users"].find_one({"username": username}):
+                messagebox.showwarning("Login", "Incorrect username or password")
+            else:  
+                messagebox.showwarning("Login", "You must be registered to login.")
 
     def try_register():
         username = username_entry.get()
