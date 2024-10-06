@@ -124,7 +124,7 @@ def show_video_choice(subject):
     tk.Button(choice_window, text="Watch Video", command=watch_video).pack()
     tk.Button(choice_window, text="Answer Questions", command=lambda: (choice_window.destroy(), ask_questions(subject))).pack()
 
-# Function to ask questions
+# Function to ask questions# Function to ask questions
 def ask_questions(subject):
     question_window = tk.Toplevel(root)
     question_window.title(f"{subject} Questions")
@@ -147,23 +147,30 @@ def ask_questions(subject):
     }
 
     user_answers = []
-    
+
     for q in questions[subject]:
         tk.Label(question_window, text=q["question"]).pack()
-        selected_answer = tk.StringVar()
+
+        selected_answer = tk.StringVar(value=0)  # Initialize to an empty string for each question
 
         for option in q["options"]:
-            rb = tk.Radiobutton(question_window, text=option, variable=selected_answer, value=option)
+            rb = tk.Radiobutton(question_window, text=option, variable=selected_answer, value=option, highlightthickness=0)
             rb.pack(anchor='w')
 
         # Button to submit the answer for this question
-        tk.Button(question_window, text="Submit Answer", command=lambda correct_answer=q["answer"]: submit_answer(correct_answer, selected_answer.get())).pack()
+        tk.Button(
+            question_window,
+            text="Submit Answer",
+            command=lambda correct_answer=q["answer"], selected_var=selected_answer: submit_answer(correct_answer, selected_var.get())
+        ).pack()
 
     def submit_answer(correct_answer, user_answer):
         user_answers.append(user_answer)
         tk.Label(question_window, text=f"You answered: {user_answer}. Correct answer was: {correct_answer}").pack()
 
     tk.Button(question_window, text="Finish", command=question_window.destroy).pack()
+
+
 
 # Initialize the database
 db = init_db()
