@@ -4,8 +4,11 @@ import hashlib
 import webbrowser
 from pymongo import MongoClient
 
-# Function to initialize the MongoDB database
 def init_db():
+    # Initializes the MongoDB database connection
+
+    # Returns:
+        # MongoClient: The connected MongoClient instance
     try:
         uri = "mongodb+srv://clinton3122003:hacksmu123@learningapp.31wtb.mongodb.net/?retryWrites=true&w=majority&appName=LearningApp"
         client = MongoClient(uri)
@@ -15,6 +18,7 @@ def init_db():
     except Exception as e:
         messagebox.showerror("Error", f"Failed to connect to MongoDB: {e}")
         return None
+
 
 # Function to hash passwords
 def hash_password(password):
@@ -207,6 +211,6 @@ root.withdraw()  # Hide the root window initially
 if db is not None:
     add_points_to_users(db)  # This will add a points field to all users without it
     user_login(db)
-
+    
 # Run the app
 root.mainloop()
