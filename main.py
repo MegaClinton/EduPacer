@@ -19,34 +19,30 @@ def init_db():
 
 # Function to hash passwords
 def hash_password(password):
-    if salt is None:
-        salt = os.urandom(16)  # Generate a new salt if not provided
-    salted_password = salt + password.encode()  # Add salt to the password
-    hashed_password = hashlib.sha256(salted_password).hexdigest()  # Hash the salted password
-    return hashed_password, salt
+    return hashlib.sha256(password.encode()).hexdigest()
 
 # Function for logging in users
 def login(db, username, password):
     users_collection = db["users"]
     hashed_password = hash_password(password)
     user = users_collection.find_one({"username": username, "password": hashed_password})
-    if user:
-        salt = user["salt"]  # Get the stored salt from the database
-        hashed_password, _ = hash_password(password, salt)  # Hash the provided password with the stored salt
-        if hashed_password == user["password"]:
-            return user
-    return None
+    return user
 
 # Function for registering new users
 def register(db, username, password):
     users_collection = db["users"]
-    if users_collection.find_one({"username": username}):
-        messagebox.showwarning("Registration", "Username already exists!")
+    hashed_password = hash_password(password)
+    
+    # Check if the username already exists
+    existing_user = users_collection.find_one({"username": username})
+    
+    if existing_user:
+        messagebox.showwarning("Registration", "Username already exists. Please choose a different username.")
         return
-    hashed_password, salt = hash_password(password)  # Hash password with a new salt
+
     try:
-        # Insert new user document with salt and hashed password
-        users_collection.insert_one({"username": username, "password": hashed_password, "salt": salt})
+        # Insert new user document
+        users_collection.insert_one({"username": username, "password": hashed_password})
         messagebox.showinfo("Registration", "Registration successful!")
     except Exception as e:
         messagebox.showwarning("Registration", f"Error: {e}")
@@ -80,9 +76,9 @@ def user_login(db):
         password = password_entry.get()
         if username and password:
             register(db, username, password)
-            messagebox.showinfo("Register", "Registration successful!")
+            # Call login again to allow the user to log in after registration
             login_window.destroy()
-            show_menu(username)
+            user_login(db)
         else:
             messagebox.showwarning("Register", "Please enter a username and password")
 
@@ -169,18 +165,16 @@ def ask_questions(subject):
 
     tk.Button(question_window, text="Finish", command=question_window.destroy).pack()
 
-# Root window for the app
-root = tk.Tk()
-root.title("Learning Tool")
-root.geometry("300x200")
-
 # Initialize the database
 db = init_db()
 
-# Start the login process
+# Create the root window but do not call mainloop yet
+root = tk.Tk()
+root.withdraw()  # Hide the root window initially
+
+# Start the login process only if the database connection was successful
 if db is not None:
     user_login(db)
 
 # Run the app
 root.mainloop()
-
