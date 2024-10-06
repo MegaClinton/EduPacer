@@ -41,11 +41,24 @@ def register(db, username, password):
         return
 
     try:
-        # Insert new user document
-        users_collection.insert_one({"username": username, "password": hashed_password})
+        # Insert new user document with points initialized to 0
+        users_collection.insert_one({
+            "username": username,
+            "password": hashed_password,
+            "points": 0  # Initialize points to 0
+        })
         messagebox.showinfo("Registration", "Registration successful!")
     except Exception as e:
         messagebox.showwarning("Registration", f"Error: {e}")
+
+def add_points_to_users(db):
+    users_collection = db["users"]
+    # Update all users to add a new points field if it doesn't exist
+    result = users_collection.update_many(
+        {"points": {"$exists": False}},  # Only update users who don't have the points field
+        {"$set": {"points": 0}}  # Set points to 0
+    )
+    print(f"Modified {result.modified_count} documents.")
 
 # Prompt for user login or registration
 def user_login(db):
@@ -151,7 +164,7 @@ def ask_questions(subject):
     for q in questions[subject]:
         tk.Label(question_window, text=q["question"]).pack()
 
-        selected_answer = tk.StringVar(value=0)  # Initialize to an empty string for each question
+        selected_answer = tk.StringVar(value=0)
 
         for option in q["options"]:
             rb = tk.Radiobutton(question_window, text=option, variable=selected_answer, value=option, highlightthickness=0)
@@ -181,6 +194,7 @@ root.withdraw()  # Hide the root window initially
 
 # Start the login process only if the database connection was successful
 if db is not None:
+    add_points_to_users(db)  # This will add a points field to all users without it
     user_login(db)
 
 # Run the app
