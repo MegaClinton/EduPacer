@@ -18,7 +18,7 @@ def serialize_user(user):
 def login():
     data = request.json
     username = data.get('username')
-    password = data.get('password')
+    password = data.get('password') 
     if not username or not password:
         return jsonify({"error": "username and password fields are required"}), 400
     
