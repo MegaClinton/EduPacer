@@ -1,0 +1,13 @@
+<!doctype html>
+<html>
+<head>
+    <title>{{ video_title }}</title>
+</head>
+<body>
+    <h2>{{ video_title }}</h2>
+    <a href="{{ video_url }}" target="_blank">Watch Video</a>
+    <form method="POST" action="{{ url_for('questions', subject=subject) }}">
+        <button type="submit">Answer Questions</button>
+    </form>
+</body>
+</html>

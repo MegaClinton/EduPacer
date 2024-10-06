@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+<head>
+    <title>Menu</title>
+</head>
+<body>
+    <h2>Welcome, {{ username }}! Pick a subject:</h2>
+    <a href="{{ url_for('video_choice', subject='Math') }}">Math</a>
+    <a href="{{ url_for('video_choice', subject='Science') }}">Science</a>
+    <a href="{{ url_for('video_choice', subject='Programming') }}">Programming</a>
+</body>
+</html>
