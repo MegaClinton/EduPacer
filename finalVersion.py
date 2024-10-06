@@ -7,10 +7,9 @@ from pymongo import MongoClient
 # Function to initialize the MongoDB database
 def init_db():
     try:
-        # Replace with your actual MongoDB password
         uri = "mongodb+srv://clinton3122003:hacksmu123@learningapp.31wtb.mongodb.net/?retryWrites=true&w=majority&appName=LearningApp"
         client = MongoClient(uri)
-        db = client["LearningApp"]  # Replace with your actual database name
+        db = client["LearningApp"]
         print("Connected to MongoDB Atlas!")
         return db
     except Exception as e:
@@ -123,9 +122,9 @@ def show_video_choice(subject, username):
     choice_window.title(f"{subject} Video Choice")
 
     video_details = {
-        "Math": ("Math Basics - Adding and Subtracting", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
-        "Science": ("Science 101 - Basic Chemistry", "https://www.youtube.com/watch?v=abcd1234"),
-        "Programming": ("Intro to Programming - Python Basics", "https://www.youtube.com/watch?v=xyz5678")
+        "Math": ("Math Basics - Adding and Subtracting", "https://www.youtube.com/watch?v=7J1OkxuyLD0&pp=ygUkYmFzaWMgbWF0aCBhZGRpdGlvbiBhbmQgc3VidHJhY3Rpb24g"),
+        "Science": ("Science 101 - Basic Chemistry", "https://www.youtube.com/watch?v=k3rRrl9J2F4&pp=ygUVc2NpZW5jZSAxMDEgY2hlbWlzdHJ5"),
+        "Programming": ("Intro to Programming - Python Basics", "https://www.youtube.com/watch?v=fWjsdhR3z3c&pp=ygUbaW50cm8gdG8gcHJvZ3JhbW1pbmcgcHl0aG9u")
     }
 
     video_title, video_url = video_details[subject]
