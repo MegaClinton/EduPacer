@@ -124,7 +124,7 @@ def show_video_choice(subject, username):
     video_details = {
         "Math": ("Math Basics - Adding and Subtracting", "https://www.youtube.com/watch?v=7J1OkxuyLD0&pp=ygUkYmFzaWMgbWF0aCBhZGRpdGlvbiBhbmQgc3VidHJhY3Rpb24g"),
         "Science": ("Science 101 - Basic Chemistry", "https://www.youtube.com/watch?v=k3rRrl9J2F4&pp=ygUVc2NpZW5jZSAxMDEgY2hlbWlzdHJ5"),
-        "Programming": ("Intro to Programming - Python Basics", "https://www.youtube.com/watch?v=fWjsdhR3z3c&pp=ygUbaW50cm8gdG8gcHJvZ3JhbW1pbmcgcHl0aG9u")
+        "Programming": ("Intro to Programming - Python Basics", "https://www.youtube.com/watch?v=I-k-iTUMQAY")
     }
 
     video_title, video_url = video_details[subject]
