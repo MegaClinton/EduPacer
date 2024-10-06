@@ -32,33 +32,16 @@ def login(db, username, password):
 def register(db, username, password):
     users_collection = db["users"]
     hashed_password = hash_password(password)
-    
-    # Check if the username already exists
-    existing_user = users_collection.find_one({"username": username})
-    
-    if existing_user:
+    if users_collection.find_one({"username": username}):
         messagebox.showwarning("Registration", "Username already exists. Please choose a different username.")
         return
 
     try:
-        # Insert new user document with points initialized to 0
-        users_collection.insert_one({
-            "username": username,
-            "password": hashed_password,
-            "points": assign_points  # Initialize points to 0
-        })
+        # Insert new user document
+        users_collection.insert_one({"username": username, "password": hashed_password})
         messagebox.showinfo("Registration", "Registration successful!")
     except Exception as e:
         messagebox.showwarning("Registration", f"Error: {e}")
-
-def add_points_to_users(db):
-    users_collection = db["users"]
-    # Update all users to add a new points field if it doesn't exist
-    result = users_collection.update_many(
-        {"points": {"$exists": False}},  # Only update users who don't have the points field
-        {"$set": {"points": 0}}  # Set points to 0
-    )
-    print(f"Modified {result.modified_count} documents.")
 
 # Prompt for user login or registration
 def user_login(db):
@@ -89,9 +72,9 @@ def user_login(db):
         password = password_entry.get()
         if username and password:
             register(db, username, password)
-            # Call login again to allow the user to log in after registration
-            login_window.destroy()
-            user_login(db)
+            if username not in [u["username"] for u in db["users"].find()]:  # Check if the user was actually registered
+                login_window.destroy()
+                show_menu(username)
         else:
             messagebox.showwarning("Register", "Please enter a username and password")
 
@@ -109,35 +92,26 @@ def show_menu(username):
     
     def pick_subject(subject):
         menu_window.destroy()
-        show_video_choice(subject)
+        show_video(subject)
 
     for subject in subjects:
         tk.Button(menu_window, text=subject, command=lambda s=subject: pick_subject(s)).pack()
 
-# Function to show video choice
-def show_video_choice(subject):
-    choice_window = tk.Toplevel(root)
-    choice_window.title(f"{subject} Video Choice")
+# Function to display the video
+def show_video(subject):
+    video_url = {
+        "Math": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",  # Example links
+        "Science": "https://www.youtube.com/watch?v=abcd1234",  
+        "Programming": "https://www.youtube.com/watch?v=xyz5678"
+    }[subject]
 
-    video_details = {
-        "Math": ("Math Basics - Adding and Subtracting", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
-        "Science": ("Science 101 - Basic Chemistry", "https://www.youtube.com/watch?v=abcd1234"),
-        "Programming": ("Intro to Programming - Python Basics", "https://www.youtube.com/watch?v=xyz5678")
-    }
-
-    video_title, video_url = video_details[subject]
-
-    tk.Label(choice_window, text=f"Video Title: {video_title}").pack()
+    # Open the video in the default web browser
+    webbrowser.open(video_url)
     
-    def watch_video():
-        webbrowser.open(video_url)
-        choice_window.destroy()
-        ask_questions(subject)
+    # After a brief pause to ensure the video opens, ask questions
+    root.after(2000, lambda: ask_questions(subject))  # Adjust delay if needed
 
-    tk.Button(choice_window, text="Watch Video", command=watch_video).pack()
-    tk.Button(choice_window, text="Answer Questions", command=lambda: (choice_window.destroy(), ask_questions(subject))).pack()
-
-# Function to ask questions# Function to ask questions
+# Function to ask questions
 def ask_questions(subject):
     question_window = tk.Toplevel(root)
     question_window.title(f"{subject} Questions")
@@ -159,6 +133,7 @@ def ask_questions(subject):
         ]
     }
 
+    
     correct_answers = 0  # Track correct answers
     
     def submit_answer(correct_answer, user_answer):
@@ -169,7 +144,8 @@ def ask_questions(subject):
 
     def finish_quiz():
         points = assign_points(correct_answers)
-        messagebox.showinfo("Quiz Complete", f"You earned {points} points.")
+        tokens = assign_tokens(points)
+        messagebox.showinfo("Quiz Complete", f"You earned {points} points and {tokens:.2f} tokens.")
         question_window.destroy()
 
     for q in questions[subject]:
@@ -190,24 +166,30 @@ def ask_questions(subject):
 def assign_points(correct_answers):
     points_per_answer = 10
     return correct_answers * points_per_answer
-    
+
+# Function to assign tokens based on points
+def assign_tokens(points):
+    return points * 0.01
+
+# Function to assign tokens based on points
+def assign_tokens(points):
+    # Token value is 0.01 of the total points
+    tokens = points * 0.01
+    return tokens
+    tk.Label(question_window, text=f"User has earned {points} points and {tokens:.2f} tokens.").pack()
 
 
-
-
+# Root window for the app
+root = tk.Tk()
+root.title("Learning Tool")
+root.geometry("300x200")
 
 # Initialize the database
 db = init_db()
 
-# Create the root window but do not call mainloop yet
-root = tk.Tk()
-root.withdraw()  # Hide the root window initially
-
-# Start the login process only if the database connection was successful
+# Start the login process
 if db is not None:
-    add_points_to_users(db)  # This will add a points field to all users without it
     user_login(db)
 
 # Run the app
 root.mainloop()
-# code end
