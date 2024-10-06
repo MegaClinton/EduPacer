@@ -178,3 +178,4 @@ if db is not None:
 
 # Run the app
 root.mainloop()
+# code end
